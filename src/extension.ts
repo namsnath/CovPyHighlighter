@@ -184,7 +184,8 @@ const updateFileHighlight = (editor: vscode.TextEditor) => {
 	}
 };
 
-export async function activate(context: vscode.ExtensionContext) {
+// context: vscode.ExtensionContext
+export async function activate() {
 	createOutputChannel();
 	createStatusBarItem();
 	log(`${EXT_NAME} activated`);

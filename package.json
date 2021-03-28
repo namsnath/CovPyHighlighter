@@ -4,6 +4,13 @@
 	"description": "Highlights coverage.py lines in VSCode",
 	"publisher": "namsnath",
 	"version": "0.0.1",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/namsnath/CovPyHighlighter"
+	},
+	"bugs": {
+		"url": "https://github.com/namsnath/CovPyHighlighter/issues"
+	},
 	"engines": {
 		"vscode": "^1.54.0"
 	},
