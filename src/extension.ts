@@ -183,7 +183,9 @@ export async function activate() {
 	// Ensure that the cache is updated atleast once
 	await updateCache(getCoverageFileGlob());
 
-	vscode.window.activeTextEditor ? updateFileHighlight(vscode.window.activeTextEditor) : null;
+	if (vscode.window.activeTextEditor) {
+		updateFileHighlight(vscode.window.activeTextEditor);
+	}
 
 	// Setup a file watcher to watch our coverage file(s)
 	const covFileWatcher = vscode.workspace.createFileSystemWatcher(
@@ -197,7 +199,9 @@ export async function activate() {
 	covFileWatcher.onDidDelete(async (uri) => await updateCache(uri.fsPath));
 
 	vscode.window.onDidChangeActiveTextEditor((editor) => {
-		editor ? updateFileHighlight(editor) : null;
+		if (editor && !/extension-output-#\d/.test(editor.document.fileName)) {
+			updateFileHighlight(editor);
+		}
 	});
 }
 
