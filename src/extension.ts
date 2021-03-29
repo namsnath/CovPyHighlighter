@@ -39,16 +39,8 @@ const createOutputChannel = () => {
 };
 
 const createStatusBarItem = () => {
-	log('Creating StatusBarItem');
+	console.log('Creating StatusBarItem');
 	STATUS_BAR_ITEM = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
-};
-
-const log = (data: any) => {
-	if (OUTPUT_CHANNEL) {
-		OUTPUT_CHANNEL.appendLine(`[LOG] ${data}`);
-	}
-		
-	console.log(`[LOG] ${data}`);
 };
 
 const getFromConfig = (config: Config) => {
@@ -64,11 +56,11 @@ const getCoverageFileGlob = () : vscode.GlobPattern => {
 	if (filePath) {
 		const filePathUri = vscode.Uri.file(filePath);
 		const filePathCovUri = vscode.Uri.joinPath(filePathUri, fileName);
-		log(`config fsPath: ${filePathCovUri.fsPath}`);
+		console.log(`config fsPath: ${filePathCovUri.fsPath}`);
 		return filePathCovUri.fsPath;
 	}
 
-	log('No custom filepath defined');
+	console.log('No custom filepath defined');
 	return `**/${fileName}`;
 };
 
@@ -98,12 +90,12 @@ const processJsonCoverage = (json: any) => {
 const parseCoverageFile = async (glob: vscode.GlobPattern) => {
 	let mergedCovData: ICoverageCache = {};
 
-	log(`Searching for coverage files with glob: ${glob}`);
+	console.log(`Searching for coverage files with glob: ${glob}`);
 	const matchingFiles = await vscode.workspace.findFiles(glob);
-	log(`Found files: ${matchingFiles}`);
+	console.log(`Found files: ${matchingFiles}`);
 
 	matchingFiles.forEach((file) => {
-		log(`Parsing File: ${file.fsPath}`);
+		console.log(`Parsing File: ${file.fsPath}`);
 		const content = readFileSync(file.fsPath);
 		const jsonData = JSON.parse(content.toString());
 
@@ -117,12 +109,12 @@ const parseCoverageFile = async (glob: vscode.GlobPattern) => {
 };
 
 const updateCache = async (glob: vscode.GlobPattern) => {
-	log('Updating Coverage Cache');
+	console.log('Updating Coverage Cache');
 	COV_CACHE = await parseCoverageFile(glob);
 };
 
 const updateFileHighlight = (editor: vscode.TextEditor) => {
-	log(`Updating: ${editor.document.fileName}`);
+	console.log(`Updating: ${editor.document.fileName}`);
 	const fullPath = editor.document.uri.fsPath;
 	const fullPathLower = fullPath.toLowerCase();
 	const path = editor.document.uri.path;
@@ -144,8 +136,6 @@ const updateFileHighlight = (editor: vscode.TextEditor) => {
 			
 			const fileInPath = fullPath.includes(file) || path.includes(file);
 			const fileInPathLower = fullPathLower.includes(fileLower) || pathLower.includes(fileLower);
-
-			log(`${file}, ${fileInPath}, ${fileInPathLower}`);
 
 			if (
 				fileInPath || (PLATFORM === 'win32' && fileInPathLower)) {
@@ -186,9 +176,9 @@ const updateFileHighlight = (editor: vscode.TextEditor) => {
 
 // context: vscode.ExtensionContext
 export async function activate() {
-	createOutputChannel();
+	// createOutputChannel();
 	createStatusBarItem();
-	log(`${EXT_NAME} activated`);
+	console.log(`${EXT_NAME} activated`);
 
 	// Ensure that the cache is updated atleast once
 	await updateCache(getCoverageFileGlob());
