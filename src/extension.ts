@@ -3,34 +3,13 @@ import { promisify } from 'util';
 import * as os from 'os';
 import * as vscode from 'vscode';
 import { ICoverageCache, CoverageStats, ICoverageStatsJson } from './models';
+import { ConfigProvider } from './util/config';
 
 // Promisified Functions
 const readFileAsync = promisify(fs.readFile);
 
-// Constants
-const EXT_NAME = 'CovPyHighlighter';
-const DEFAULT_COVERAGE_FILE = 'coverage.json';
-
-enum Config {
-	coverageFileName = 'covpyhighlighter.coverageFileName',
-	coverageFilePath = 'covpyhighlighter.coverageFilePath',
-	replacePath = 'covpyhighlighter.replacePath',
-	replacePathWith = 'covpyhighlighter.replacePathWith',
-};
-
-let EXECUTED_DECOR: vscode.TextEditorDecorationType = vscode.window.createTextEditorDecorationType(
-	{ backgroundColor: 'rgba(0, 255, 0, 0.2)'}
-);
-
-let EXCLUDED_DECOR: vscode.TextEditorDecorationType = vscode.window.createTextEditorDecorationType(
-	{ backgroundColor: 'rgba(255, 255, 0, 0.2)'}
-);
-
-let MISSING_DECOR: vscode.TextEditorDecorationType = vscode.window.createTextEditorDecorationType(
-	{ backgroundColor: 'rgba(255, 0, 0, 0.2)'}
-);
-
 // Caches/Dynamic
+let config: ConfigProvider;
 let OUTPUT_CHANNEL: vscode.OutputChannel | undefined;
 let STATUS_BAR_ITEM: vscode.StatusBarItem | undefined;
 let COV_CACHE: ICoverageCache = {};
@@ -40,7 +19,7 @@ let PLATFORM: NodeJS.Platform = os.platform();
 // Functions
 const createOutputChannel = () => {
 	console.log('[Creating] OutputChannel');
-	OUTPUT_CHANNEL = vscode.window.createOutputChannel(EXT_NAME);
+	OUTPUT_CHANNEL = vscode.window.createOutputChannel(config.extensionName);
 };
 
 const createStatusBarItem = () => {
@@ -48,6 +27,7 @@ const createStatusBarItem = () => {
 	STATUS_BAR_ITEM = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
 };
 
+// TODO: Add command to statusBarItem
 const updateStatusBarItem = (
 	{loading = true, stats}: 
 	{loading?: boolean, stats?: CoverageStats | null}
@@ -79,19 +59,10 @@ const updateStatusBarItem = (
 	STATUS_BAR_ITEM.show();
 };
 
-const getFromConfig = (config: Config) => {
-	const vscodeConfig = vscode.workspace.getConfiguration();
-	return vscodeConfig.get(config);
-};
-
 const getCoverageFileFromConfigPath = async (): Promise<any> => {
-	const vscodeConfig = vscode.workspace.getConfiguration();
-	const fileName: string = vscodeConfig.get(Config.coverageFileName) ?? DEFAULT_COVERAGE_FILE;
-	const filePath: string | undefined = vscodeConfig.get(Config.coverageFilePath);
-
-	if (filePath) {
-		const filePathUri = vscode.Uri.file(filePath);
-		const filePathCovUri = vscode.Uri.joinPath(filePathUri, fileName);
+	if (config.coverageFilePath) {
+		const filePathUri = vscode.Uri.file(config.coverageFilePath);
+		const filePathCovUri = vscode.Uri.joinPath(filePathUri, config.coverageFileName);
 		console.info(`[CoverageFile][Found] ${filePathCovUri.fsPath}`);
 
 		try {
@@ -109,10 +80,7 @@ const getCoverageFileFromConfigPath = async (): Promise<any> => {
 };
 
 const getCoverageFileFromGlob = async (): Promise<any> => {
-	const vscodeConfig = vscode.workspace.getConfiguration();
-	const fileName: string = vscodeConfig.get(Config.coverageFileName) ?? DEFAULT_COVERAGE_FILE;
-
-	const glob = `**/${fileName}`;
+	const glob = `**/${config.coverageFileName}`;
 	let mergedCovData: ICoverageCache = {};
 
 	console.log(`[Searching][CoverageFileGlob] ${glob}`);
@@ -135,9 +103,6 @@ const getCoverageFileFromGlob = async (): Promise<any> => {
 };
 
 const processJsonCoverage = (json: any) => {
-	const vscodeConfig = vscode.workspace.getConfiguration();
-	const replacePath: string = vscodeConfig.get(Config.replacePath) ?? "";
-	const replacePathWith: string = vscodeConfig.get(Config.replacePathWith) ?? "";
 	const covData: ICoverageCache = {};
 
 	if (json && json.files) {
@@ -147,8 +112,8 @@ const processJsonCoverage = (json: any) => {
 
 			covData[stats.replacedPath] = stats;
 
-			if (replacePath) {
-				const replacedStats = new CoverageStats(file, data, replacePath, replacePathWith);
+			if (config.replacePath) {
+				const replacedStats = new CoverageStats(file, data, config.replacePath, config.replacePathWith);
 				covData[replacedStats.replacedPath] = replacedStats;
 			}
 		});
@@ -214,21 +179,21 @@ const updateFileHighlight = (editor: vscode.TextEditor) => {
 			const lineRange = editor.document.lineAt(lineNumber).range;
 			cov.excluded.push(lineRange);
 		}
-		editor.setDecorations(EXCLUDED_DECOR, cov.excluded);
+		editor.setDecorations(config.excludedDecor, cov.excluded);
 
 		for (let i = 0; i < covStats.missingLines.length; i++) {
 			const lineNumber = covStats.missingLines[i] - 1;
 			const lineRange = editor.document.lineAt(lineNumber).range;
 			cov.missing.push(lineRange);
 		}
-		editor.setDecorations(MISSING_DECOR, cov.missing);
+		editor.setDecorations(config.missingDecor, cov.missing);
 
 		for (let i = 0; i < covStats.executedLines.length; i++) {
 			const lineNumber = covStats.executedLines[i] - 1;
 			const lineRange = editor.document.lineAt(lineNumber).range;
 			cov.executed.push(lineRange);
 		}
-		editor.setDecorations(EXECUTED_DECOR, cov.executed);
+		editor.setDecorations(config.executedDecor, cov.executed);
 
 		updateStatusBarItem({loading: false, stats: covStats});
 	} else {
@@ -238,7 +203,10 @@ const updateFileHighlight = (editor: vscode.TextEditor) => {
 
 // context: vscode.ExtensionContext
 export async function activate() {
-	console.log(`[Activating] ${EXT_NAME}`);
+	// Configs
+	config = new ConfigProvider();
+	console.log(`[Activating] ${config.extensionName}`);
+
 	// createOutputChannel();
 	createStatusBarItem();
 	updateStatusBarItem({loading: true});
