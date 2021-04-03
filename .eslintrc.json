@@ -3,12 +3,19 @@
     "parser": "@typescript-eslint/parser",
     "parserOptions": {
         "ecmaVersion": 6,
-        "sourceType": "module"
+        "sourceType": "module",
+        "project": ["./tsconfig.json"]
     },
     "plugins": [
         "@typescript-eslint"
     ],
+    "extends": [
+        "airbnb-typescript/base"
+    ],
     "rules": {
+        "indent": ["error", 4],
+        "@typescript-eslint/indent": ["error", 4],
+        "@typescript-eslint/lines-between-class-members": "off",
         "@typescript-eslint/naming-convention": "warn",
         "@typescript-eslint/semi": "warn",
         "curly": "warn",
