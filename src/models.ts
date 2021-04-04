@@ -9,6 +9,11 @@ export interface ICoverageStatsJson {
         percent_covered: number;
         missing_lines: number;
         excluded_lines: number;
+        // If branch is enabled
+        num_branches?: number;
+        num_partial_branches?: number;
+        covered_branches?: number;
+        missing_branches?: number;
     };
 }
 /* eslint-enable @typescript-eslint/naming-convention */
@@ -29,6 +34,11 @@ export class CoverageStats {
         missingLines: number;
         numStatements: number;
         percentCovered: number;
+        // If branch is enabled
+        numBranches: number;
+        numPartialBranches: number;
+        coveredBranches: number;
+        missingBranches: number;
     };
 
     constructor(
@@ -53,6 +63,11 @@ export class CoverageStats {
             missingLines: stats.summary.missing_lines,
             numStatements: stats.summary.num_statements,
             percentCovered: stats.summary.percent_covered,
+            // If branch is enabled
+            numBranches: stats.summary?.num_branches ?? 0,
+            numPartialBranches: stats.summary?.num_partial_branches ?? 0,
+            coveredBranches: stats.summary?.covered_branches ?? 0,
+            missingBranches: stats.summary?.missing_branches ?? 0,
         };
     }
 }
