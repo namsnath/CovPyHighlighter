@@ -6,57 +6,20 @@ import { ICoverageCache, CoverageStats, ICoverageStatsJson } from './models';
 import ConfigProvider from './config/ConfigProvider';
 import Logger from './util/Logger';
 import Configs from './config/Configs';
+import CoverageStatusBarItem from './statusBar/CoverageStatusBarItem';
 
 // Promisified Functions
 const readFileAsync = promisify(readFile);
 
 const config = ConfigProvider.getInstance();
-const PLATFORM: NodeJS.Platform = platform();
-const isWindows = PLATFORM === 'win32';
+const statusBarItem = CoverageStatusBarItem.getInstance();
+const isWindows = platform() === 'win32';
 
 // Caches/Dynamic
-let STATUS_BAR_ITEM: vscode.StatusBarItem | undefined;
 let COV_CACHE: ICoverageCache = {};
 // let FILE_CACHE: ICoverageCache = {};
 
 // Functions
-const createStatusBarItem = () => {
-    Logger.log('[Creating] StatusBarItem');
-    STATUS_BAR_ITEM = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
-};
-
-// TODO: Add command to statusBarItem
-const updateStatusBarItem = (
-    { loading = true, stats }:
-    { loading?: boolean, stats?: CoverageStats | null },
-) => {
-    if (!STATUS_BAR_ITEM) {
-        return;
-    }
-
-    const staticIcon = '$(globe)';
-    const spinningIcon = '$(globe~spin)';
-
-    if (loading) {
-        STATUS_BAR_ITEM.text = `${spinningIcon}`;
-        STATUS_BAR_ITEM.show();
-        return;
-    }
-
-    if (stats) {
-        const percent = stats.summary.percentCovered.toFixed(2);
-        const covered = stats.summary.coveredLines;
-        const missing = stats.summary.missingLines;
-
-        STATUS_BAR_ITEM.text = `${staticIcon} ${percent}% : ✓ ${covered} ✗ ${missing}`;
-        STATUS_BAR_ITEM.show();
-        return;
-    }
-
-    STATUS_BAR_ITEM.text = `${staticIcon} Coverage`;
-    STATUS_BAR_ITEM.show();
-};
-
 const getCoverageFileFromConfigPath = async (): Promise<any> => {
     if (config.coverageFilePath) {
         const filePathUri = vscode.Uri.file(config.coverageFilePath);
@@ -146,7 +109,7 @@ const updateCache = async () => {
 
 const updateFileHighlight = (editor: vscode.TextEditor) => {
     Logger.log(`[Updating][FileHighlight] ${editor.document.fileName}`);
-    updateStatusBarItem({ loading: true });
+    statusBarItem.update({ loading: true });
 
     const fullPath = editor.document.uri.fsPath;
     const fullPathLower = fullPath.toLowerCase();
@@ -202,18 +165,15 @@ const updateFileHighlight = (editor: vscode.TextEditor) => {
         editor.setDecorations(config.missingDecor, cov.missing);
         editor.setDecorations(config.executedDecor, cov.executed);
 
-        updateStatusBarItem({ loading: false, stats: covStats });
+        statusBarItem.update({ loading: false, stats: covStats });
     } else {
-        updateStatusBarItem({ loading: false });
+        statusBarItem.update({ loading: false });
     }
 };
 
 // context: vscode.ExtensionContext
 export async function activate() {
     Logger.log(`[Activating] ${Configs.extensionName}`);
-
-    createStatusBarItem();
-    updateStatusBarItem({ loading: true });
 
     // Ensure that the cache is updated atleast once
     await updateCache();
