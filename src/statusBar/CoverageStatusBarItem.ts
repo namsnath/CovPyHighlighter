@@ -37,7 +37,9 @@ export default class CoverageStatusBarItem {
         const coveredIcon = '$(pass)';
         const missingIcon = '$(stop)';
         const excludedIcon = '$(stop-circle)';
-        // const branchIcon = '$(gist-fork)';
+        const branchIcon = '$(gist-fork)';
+        const partialbranchIcon = '$(alert)';
+        const separator = '$(gripper)';
 
         if (loading) {
             this.statusBarItem.text = `${spinningIcon}`;
@@ -48,20 +50,33 @@ export default class CoverageStatusBarItem {
 
         if (stats) {
             const percent = stats.summary.percentCovered.toFixed(2);
-            const covered = stats.summary.coveredLines;
-            const missing = stats.summary.missingLines;
-            const excluded = stats.summary.excludedLines;
+            const {
+                coveredLines, missingLines, excludedLines,
+                numBranches, coveredBranches, missingBranches,
+                numPartialBranches: partialBranches,
+            } = stats.summary;
+
             const textItems = [
                 `${staticIcon} ${percent}%`,
-                `${coveredIcon} ${covered}`,
-                `${missingIcon} ${missing}`,
-                `${excludedIcon} ${excluded}`,
+                `${coveredIcon} ${coveredLines}`,
+                `${missingIcon} ${missingLines}`,
+                `${excludedIcon} ${excludedLines}`,
+                `${separator}`,
+                `${branchIcon}`,
+                `${coveredIcon} ${coveredBranches}`,
+                `${missingIcon} ${missingBranches}`,
+                `${partialbranchIcon} ${partialBranches}`,
             ];
             const tooltipLines = [
                 `Coverage: ${percent}%`,
-                `Covered: ${covered}`,
-                `Missing: ${missing}`,
-                `Excluded: ${excluded}`,
+                `- Covered: ${coveredLines}`,
+                `- Missing: ${missingLines}`,
+                `- Excluded: ${excludedLines}`,
+                '',
+                `Branches: ${numBranches}`,
+                `- Covered: ${coveredBranches}`,
+                `- Missing: ${missingBranches}`,
+                `- Partial: ${partialBranches}`,
             ];
 
             this.statusBarItem.text = textItems.join(' ');
