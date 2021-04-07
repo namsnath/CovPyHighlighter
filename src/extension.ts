@@ -20,7 +20,7 @@ let COV_CACHE: ICoverageCache = {};
 // let FILE_CACHE: ICoverageCache = {};
 
 // Functions
-const getCoverageFileFromConfigPath = async (): Promise<any> => {
+async function getCoverageFileFromConfigPath(): Promise<any> {
     if (config.coverageFilePath) {
         const filePathUri = vscode.Uri.file(config.coverageFilePath);
         const filePathCovUri = vscode.Uri.joinPath(filePathUri, config.coverageFileName);
@@ -39,9 +39,9 @@ const getCoverageFileFromConfigPath = async (): Promise<any> => {
     }
 
     return {};
-};
+}
 
-const getCoverageFileFromGlob = async (): Promise<any> => {
+async function getCoverageFileFromGlob(): Promise<any> {
     const glob = `**/${config.coverageFileName}`;
     let mergedCovData: ICoverageCache = {};
 
@@ -63,9 +63,9 @@ const getCoverageFileFromGlob = async (): Promise<any> => {
     });
 
     return mergedCovData;
-};
+}
 
-const processJsonCoverage = (json: any) => {
+function processJsonCoverage(json: any) {
     const covData: ICoverageCache = {};
 
     if (json && json.files) {
@@ -87,7 +87,7 @@ const processJsonCoverage = (json: any) => {
     }
 
     return covData;
-};
+}
 
 const updateCache = async () => {
     Logger.log('[Updating][CoverageCache]');
@@ -107,7 +107,7 @@ const updateCache = async () => {
     Logger.log('No data found, could not update cache');
 };
 
-const updateFileHighlight = (editor: vscode.TextEditor) => {
+function updateFileHighlight(editor: vscode.TextEditor) {
     Logger.log(`[Updating][FileHighlight] ${editor.document.fileName}`);
     statusBarItem.update({ loading: true });
 
@@ -169,7 +169,7 @@ const updateFileHighlight = (editor: vscode.TextEditor) => {
     } else {
         statusBarItem.update({ loading: false });
     }
-};
+}
 
 // context: vscode.ExtensionContext
 export async function activate() {
