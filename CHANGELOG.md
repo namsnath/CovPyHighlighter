@@ -1,5 +1,10 @@
 # Change Log
-Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
+## `0.2.0` - 20210408
+- Updates the status bar item to show more details
+- Fixes bugs in `updateCache` logic
+- Adds watchers for coverage files
+- Supports branch details in coverage, adds it to status bar
+- Adds normal descriptions to `package.json`
 
 ## `0.1.0` - 20210331
 ### End-User:
