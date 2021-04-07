@@ -36,33 +36,40 @@
 				"covpyhighlighter.coverageFileName": {
 					"type": "string",
 					"default": "coverage.json",
+					"description": "Name of the JSON file containing coverage information.",
 					"markdownDescription": "Name of the JSON file containing coverage information."
 				},
 				"covpyhighlighter.coverageFilePath": {
 					"type": "string",
 					"default": "",
+					"description": "Path containing the coverage.json file.",
 					"markdownDescription": "Path containing the coverage.json file."
 				},
 				"covpyhighlighter.replacePath": {
 					"type": "string",
+					"description": "Substring in file paths to replace.",
 					"markdownDescription": "Substring in file paths to replace."
 				},
 				"covpyhighlighter.replacePathWith": {
 					"type": "string",
+					"description": "Substring to replace with in file paths.",
 					"markdownDescription": "Substring to replace with in file paths."
 				},
 				"covpyhighlighter.colors.executedColor": {
 					"type": "string",
+					"description": "Background color value for executed lines.",
 					"markdownDescription": "Background color value for executed lines in any valid CSS format (`#RRGGBBAA`, `rgba(...)`)",
 					"default": "rgba(0, 255, 0, 0.15)"
 				},
 				"covpyhighlighter.colors.excludedColor": {
 					"type": "string",
+					"description": "Background color value for excluded lines.",
 					"markdownDescription": "Background color value for excluded lines in any valid CSS format (`#RRGGBBAA`, `rgba(...)`)",
 					"default": "rgba(255, 255, 0, 0.15)"
 				},
 				"covpyhighlighter.colors.missingColor": {
 					"type": "string",
+					"description": "Background color value for missing lines.",
 					"markdownDescription": "Background color value for missing lines in any valid CSS format (`#RRGGBBAA`, `rgba(...)`)",
 					"default": "rgba(255, 0, 0, 0.15)"
 				}
