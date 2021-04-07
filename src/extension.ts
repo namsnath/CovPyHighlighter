@@ -89,23 +89,23 @@ function processJsonCoverage(json: any) {
     return covData;
 }
 
-const updateCache = async () => {
+async function updateCache() {
     Logger.log('[Updating][CoverageCache]');
 
     const fileData = await getCoverageFileFromConfigPath();
-    if (fileData) {
-        COV_CACHE = await processJsonCoverage(fileData);
+    if (fileData && Object.keys(fileData).length > 0) {
+        COV_CACHE = processJsonCoverage(fileData);
         return;
     }
 
     const globData = await getCoverageFileFromGlob();
-    if (globData) {
-        COV_CACHE = await processJsonCoverage(globData);
+    if (globData && Object.keys(globData).length > 0) {
+        COV_CACHE = processJsonCoverage(globData);
         return;
     }
 
     Logger.log('No data found, could not update cache');
-};
+}
 
 function updateFileHighlight(editor: vscode.TextEditor) {
     Logger.log(`[Updating][FileHighlight] ${editor.document.fileName}`);
