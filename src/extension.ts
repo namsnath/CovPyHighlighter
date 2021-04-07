@@ -182,21 +182,28 @@ export async function activate() {
         updateFileHighlight(vscode.window.activeTextEditor);
     }
 
-    // Setup a file watcher to watch our coverage file(s)
-    // TODO: get URI from glob/config and setup watchers
-    // const covFileWatcher = vscode.workspace.createFileSystemWatcher(
-    //  getCoverageFileGlob(),
-    //  false, false, false,
-    // );
+    // TODO: Move watchers to class and bind to workspaceConfigChange
+    if (config.coverageFilePath) {
+        const filePathUri = vscode.Uri.file(config.coverageFilePath);
+        const filePathCovUri = vscode.Uri.joinPath(filePathUri, config.coverageFileName);
+        const covFileWatcher = vscode.workspace.createFileSystemWatcher(
+            filePathCovUri.fsPath,
+            false, false, false,
+        );
 
-    // Update cache on any change in the coverage file(s)
-    // covFileWatcher.onDidChange(async (uri) => await updateCache(uri.fsPath));
-    // covFileWatcher.onDidCreate(async (uri) => await updateCache(uri.fsPath));
-    // covFileWatcher.onDidDelete(async (uri) => await updateCache(uri.fsPath));
-    // TODO: get URI from glob/config and setup watchers
-    // covFileWatcher.onDidChange(async (uri) => await updateCache());
-    // covFileWatcher.onDidCreate(async (uri) => await updateCache());
-    // covFileWatcher.onDidDelete(async (uri) => await updateCache());
+        covFileWatcher.onDidChange(() => updateCache());
+        covFileWatcher.onDidCreate(() => updateCache());
+        covFileWatcher.onDidDelete(() => updateCache());
+    } else {
+        const covFileWatcher = vscode.workspace.createFileSystemWatcher(
+            `**/${config.coverageFileName}`,
+            false, false, false,
+        );
+
+        covFileWatcher.onDidChange(() => updateCache());
+        covFileWatcher.onDidCreate(() => updateCache());
+        covFileWatcher.onDidDelete(() => updateCache());
+    }
 
     vscode.window.onDidChangeActiveTextEditor((editor) => {
         if (editor && !/extension-output-#\d/.test(editor.document.fileName)) {
