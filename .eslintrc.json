@@ -13,7 +13,7 @@
         "airbnb-typescript/base"
     ],
     "rules": {
-        "indent": ["error", 4],
+        "indent": "off",
         "@typescript-eslint/indent": ["error", 4],
         "@typescript-eslint/lines-between-class-members": "off",
         "@typescript-eslint/naming-convention": "warn",
