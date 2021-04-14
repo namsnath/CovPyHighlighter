@@ -1,8 +1,13 @@
-import { readFile, readFileSync } from 'fs';
+import { readFile } from 'fs';
 import { promisify } from 'util';
 import { platform } from 'os';
 import * as vscode from 'vscode';
-import { ICoverageCache, CoverageStats, ICoverageStatsJson } from './models';
+import { Uri, FileSystemWatcher } from 'vscode';
+import {
+    ICoverageCache,
+    CoverageStats,
+    ICoverageStatsJson,
+} from './models';
 import ConfigProvider from './config/ConfigProvider';
 import Logger from './util/Logger';
 import Configs from './config/Configs';
@@ -16,51 +21,48 @@ const statusBarItem = CoverageStatusBarItem.getInstance();
 const isWindows = platform() === 'win32';
 
 // Caches/Dynamic
+let fileWatchers: FileSystemWatcher[] = [];
 let COV_CACHE: ICoverageCache = {};
 // let FILE_CACHE: ICoverageCache = {};
 
 // Functions
-async function getCoverageFileFromConfigPath(): Promise<any> {
+async function getCoverageFileUris() : Promise<Uri[]> {
+    const files: Uri[] = [];
+
     if (config.coverageFilePath) {
         const filePathUri = vscode.Uri.file(config.coverageFilePath);
-        const filePathCovUri = vscode.Uri.joinPath(filePathUri, config.coverageFileName);
-        Logger.log(`[CoverageFile][Found] ${filePathCovUri.fsPath}`);
+        const covFilePathUri = vscode.Uri.joinPath(filePathUri, config.coverageFileName);
 
-        try {
-            Logger.log(`[CoverageFile][Parsing] ${filePathCovUri.fsPath}`);
-            const content = await readFileAsync(filePathCovUri.fsPath);
-            const jsonData = JSON.parse(content.toString());
-
-            Logger.log(`[CoverageFile][Parsed] ${filePathCovUri.fsPath}`);
-            return jsonData;
-        } catch (err) {
-            Logger.log(`[CoverageFile][NotExist] ${filePathCovUri.fsPath}`);
-        }
+        Logger.log(`[CoverageFile][FromConfig] ${covFilePathUri.fsPath}`);
+        files.push(covFilePathUri);
     }
 
-    return {};
+    const glob = `**/${config.coverageFileName}`;
+    const globFiles = await vscode.workspace.findFiles(glob);
+    Logger.log(`[CoverageFile][FromGlob] ${globFiles}`);
+    files.push(...globFiles);
+
+    return Array.from(new Set(files));
 }
 
-async function getCoverageFileFromGlob(): Promise<any> {
-    const glob = `**/${config.coverageFileName}`;
-    let mergedCovData: ICoverageCache = {};
+async function getCoverageFileData(files: Uri[]): Promise<any> {
+    const promises = Promise.all(
+        files.map((file, i) => {
+            Logger.log(`[CoverageFile][Reading] (${i + 1}/${files.length}) ${file.fsPath}`);
+            return readFileAsync(file.fsPath);
+        }),
+    );
 
-    Logger.log(`[Searching][CoverageFileGlob] ${glob}`);
-    const matchingFiles = await vscode.workspace.findFiles(glob);
-    Logger.log(`[CoverageFile][Found] ${matchingFiles}`);
-
-    // TODO: remove the readFileSync call, replace with Promise.all(map(async() {readFile()}))
-    matchingFiles.forEach((file) => {
-        Logger.log(`[CoverageFile][Parsing] ${file.fsPath}`);
-        const content = readFileSync(file.fsPath);
-        const jsonData = JSON.parse(content.toString());
-        Logger.log(`[CoverageFile][Parsed] ${file.fsPath}`);
-
-        mergedCovData = Object.assign(
-            mergedCovData,
-            jsonData,
+    const mergedCovData = (await promises)
+        .reduce(
+            (acc, content, i, arr) => {
+                Logger.log(`[CoverageFile][Parsing] ${i + 1}/${arr.length}`);
+                const jsonData = JSON.parse(content.toString());
+                Logger.log(`[CoverageFile][Parsed] ${i + 1}/${arr.length}`);
+                return Object.assign(acc, jsonData);
+            },
+            {},
         );
-    });
 
     return mergedCovData;
 }
@@ -69,7 +71,9 @@ function processJsonCoverage(json: any) {
     const covData: ICoverageCache = {};
 
     if (json && json.files) {
+        // Look for the 'files' key in coverage JSON, and iterate through each file
         Object.keys(json.files).forEach((file: string) => {
+            // Create CoverageStats for each file and assign to covData
             const data: ICoverageStatsJson = json.files[file];
             const stats = new CoverageStats(file, data);
 
@@ -89,18 +93,12 @@ function processJsonCoverage(json: any) {
     return covData;
 }
 
-async function updateCache() {
+async function updateCache(files: Uri[]) {
     Logger.log('[Updating][CoverageCache]');
 
-    const fileData = await getCoverageFileFromConfigPath();
-    if (fileData && Object.keys(fileData).length > 0) {
-        COV_CACHE = processJsonCoverage(fileData);
-        return;
-    }
-
-    const globData = await getCoverageFileFromGlob();
-    if (globData && Object.keys(globData).length > 0) {
-        COV_CACHE = processJsonCoverage(globData);
+    const data = await getCoverageFileData(files);
+    if (data && Object.keys(data).length > 0) {
+        COV_CACHE = processJsonCoverage(data);
         return;
     }
 
@@ -171,38 +169,41 @@ function updateFileHighlight(editor: vscode.TextEditor) {
     }
 }
 
+function setupFileWatchers(files: Uri[]) {
+    Logger.log(`[FileWatchers][Disposing] ${fileWatchers.length}`);
+    fileWatchers.map((watcher) => watcher.dispose());
+    fileWatchers = [];
+
+    Logger.log(`[FileWatchers][Creating] ${files.length}`);
+    fileWatchers = files.map((file) => {
+        const watcher = vscode.workspace.createFileSystemWatcher(
+            file.fsPath,
+            false, false, false,
+        );
+
+        watcher.onDidChange(() => updateCache(files));
+        watcher.onDidCreate(() => updateCache(files));
+        watcher.onDidDelete(() => updateCache(files));
+
+        return watcher;
+    });
+}
+
+async function setupCacheAndWatchers() {
+    const files = await getCoverageFileUris();
+    await updateCache(files);
+    setupFileWatchers(files);
+}
+
 // context: vscode.ExtensionContext
 export async function activate() {
     Logger.log(`[Activating] ${Configs.extensionName}`);
 
     // Ensure that the cache is updated atleast once
-    await updateCache();
+    await setupCacheAndWatchers();
 
     if (vscode.window.activeTextEditor) {
         updateFileHighlight(vscode.window.activeTextEditor);
-    }
-
-    // TODO: Move watchers to class and bind to workspaceConfigChange
-    if (config.coverageFilePath) {
-        const filePathUri = vscode.Uri.file(config.coverageFilePath);
-        const filePathCovUri = vscode.Uri.joinPath(filePathUri, config.coverageFileName);
-        const covFileWatcher = vscode.workspace.createFileSystemWatcher(
-            filePathCovUri.fsPath,
-            false, false, false,
-        );
-
-        covFileWatcher.onDidChange(() => updateCache());
-        covFileWatcher.onDidCreate(() => updateCache());
-        covFileWatcher.onDidDelete(() => updateCache());
-    } else {
-        const covFileWatcher = vscode.workspace.createFileSystemWatcher(
-            `**/${config.coverageFileName}`,
-            false, false, false,
-        );
-
-        covFileWatcher.onDidChange(() => updateCache());
-        covFileWatcher.onDidCreate(() => updateCache());
-        covFileWatcher.onDidDelete(() => updateCache());
     }
 
     vscode.window.onDidChangeActiveTextEditor((editor) => {
