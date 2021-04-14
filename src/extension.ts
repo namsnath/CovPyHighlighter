@@ -1,8 +1,14 @@
 import { readFile } from 'fs';
 import { promisify } from 'util';
 import { platform } from 'os';
-import * as vscode from 'vscode';
-import { Uri, FileSystemWatcher } from 'vscode';
+import {
+    FileSystemWatcher,
+    Range,
+    TextEditor,
+    Uri,
+    window,
+    workspace,
+} from 'vscode';
 import {
     ICoverageCache,
     CoverageStats,
@@ -30,15 +36,15 @@ async function getCoverageFileUris() : Promise<Uri[]> {
     const files: Uri[] = [];
 
     if (config.coverageFilePath) {
-        const filePathUri = vscode.Uri.file(config.coverageFilePath);
-        const covFilePathUri = vscode.Uri.joinPath(filePathUri, config.coverageFileName);
+        const filePathUri = Uri.file(config.coverageFilePath);
+        const covFilePathUri = Uri.joinPath(filePathUri, config.coverageFileName);
 
         Logger.log(`[CoverageFile][FromConfig] ${covFilePathUri.fsPath}`);
         files.push(covFilePathUri);
     }
 
     const glob = `**/${config.coverageFileName}`;
-    const globFiles = await vscode.workspace.findFiles(glob);
+    const globFiles = await workspace.findFiles(glob);
     Logger.log(`[CoverageFile][FromGlob] ${globFiles}`);
     files.push(...globFiles);
 
@@ -105,7 +111,7 @@ async function updateCache(files: Uri[]) {
     Logger.log('No data found, could not update cache');
 }
 
-function updateFileHighlight(editor: vscode.TextEditor) {
+function updateFileHighlight(editor: TextEditor) {
     Logger.log(`[Updating][FileHighlight] ${editor.document.fileName}`);
     statusBarItem.update({ loading: true });
 
@@ -115,9 +121,9 @@ function updateFileHighlight(editor: vscode.TextEditor) {
     const pathLower = path.toLowerCase();
 
     const cov = {
-        excluded: <vscode.Range[]>[],
-        executed: <vscode.Range[]>[],
-        missing: <vscode.Range[]>[],
+        excluded: <Range[]>[],
+        executed: <Range[]>[],
+        missing: <Range[]>[],
     };
 
     const matchingFile = Object.keys(COV_CACHE).find((file) => {
@@ -176,7 +182,7 @@ function setupFileWatchers(files: Uri[]) {
 
     Logger.log(`[FileWatchers][Creating] ${files.length}`);
     fileWatchers = files.map((file) => {
-        const watcher = vscode.workspace.createFileSystemWatcher(
+        const watcher = workspace.createFileSystemWatcher(
             file.fsPath,
             false, false, false,
         );
@@ -202,11 +208,11 @@ export async function activate() {
     // Ensure that the cache is updated atleast once
     await setupCacheAndWatchers();
 
-    if (vscode.window.activeTextEditor) {
-        updateFileHighlight(vscode.window.activeTextEditor);
+    if (window.activeTextEditor) {
+        updateFileHighlight(window.activeTextEditor);
     }
 
-    vscode.window.onDidChangeActiveTextEditor((editor) => {
+    window.onDidChangeActiveTextEditor((editor) => {
         if (editor && !/extension-output-#\d/.test(editor.document.fileName)) {
             updateFileHighlight(editor);
         }
