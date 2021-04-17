@@ -3,7 +3,6 @@ import { promisify } from 'util';
 import { platform } from 'os';
 import {
     FileSystemWatcher,
-    Range,
     TextEditor,
     Uri,
     window,
@@ -13,6 +12,8 @@ import {
     ICoverageCache,
     CoverageStats,
     ICoverageStatsJson,
+    IFileDecorationRange,
+    IFileDecorationCache,
 } from './models';
 import ConfigProvider from './config/ConfigProvider';
 import Logger from './util/Logger';
@@ -29,7 +30,7 @@ const isWindows = platform() === 'win32';
 // Caches/Dynamic
 let fileWatchers: FileSystemWatcher[] = [];
 let COV_CACHE: ICoverageCache = {};
-// let FILE_CACHE: ICoverageCache = {};
+let FILE_CACHE: IFileDecorationCache = {};
 
 // Functions
 async function getCoverageFileUris() : Promise<Uri[]> {
@@ -104,6 +105,7 @@ async function updateCache(files: Uri[]) {
 
     const data = await getCoverageFileData(files);
     if (data && Object.keys(data).length > 0) {
+        FILE_CACHE = {};
         COV_CACHE = processJsonCoverage(data);
         return;
     }
@@ -111,8 +113,13 @@ async function updateCache(files: Uri[]) {
     Logger.log('No data found, could not update cache');
 }
 
+function updateDecorations(editor: TextEditor, coverage: IFileDecorationRange) {
+    editor.setDecorations(config.excludedDecor, coverage.excludedRanges);
+    editor.setDecorations(config.missingDecor, coverage.missingRanges);
+    editor.setDecorations(config.executedDecor, coverage.executedRanges);
+}
+
 function updateFileHighlight(editor: TextEditor) {
-    Logger.log(`[Updating][FileHighlight] ${editor.document.fileName}`);
     statusBarItem.update({ loading: true });
 
     const fullPath = editor.document.uri.fsPath;
@@ -120,10 +127,16 @@ function updateFileHighlight(editor: TextEditor) {
     const { path } = editor.document.uri;
     const pathLower = path.toLowerCase();
 
-    const cov = {
-        excluded: <Range[]>[],
-        executed: <Range[]>[],
-        missing: <Range[]>[],
+    if (fullPath in FILE_CACHE) {
+        Logger.log(`[Updating][FileHighlight][FoundInCache] ${fullPath}`);
+        updateDecorations(editor, FILE_CACHE[fullPath]);
+        return;
+    }
+
+    const decorations: IFileDecorationRange = {
+        excludedRanges: [],
+        executedRanges: [],
+        missingRanges: [],
     };
 
     const matchingFile = Object.keys(COV_CACHE).find((file) => {
@@ -155,20 +168,19 @@ function updateFileHighlight(editor: TextEditor) {
     }
 
     if (covStats) {
-        cov.excluded = covStats.excludedLines.map(
+        Logger.log(`[Updating][FileHighlight] ${fullPath}`);
+        decorations.excludedRanges = covStats.excludedLines.map(
             (lineNum) => editor.document.lineAt(lineNum - 1).range,
         );
-        cov.executed = covStats.executedLines.map(
+        decorations.executedRanges = covStats.executedLines.map(
             (lineNum) => editor.document.lineAt(lineNum - 1).range,
         );
-        cov.missing = covStats.missingLines.map(
+        decorations.missingRanges = covStats.missingLines.map(
             (lineNum) => editor.document.lineAt(lineNum - 1).range,
         );
 
-        editor.setDecorations(config.excludedDecor, cov.excluded);
-        editor.setDecorations(config.missingDecor, cov.missing);
-        editor.setDecorations(config.executedDecor, cov.executed);
-
+        updateDecorations(editor, decorations);
+        FILE_CACHE[fullPath] = decorations;
         statusBarItem.update({ loading: false, stats: covStats });
     } else {
         statusBarItem.update({ loading: false });
