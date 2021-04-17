@@ -1,4 +1,8 @@
 # Change Log
+
+## `0.3.0` - 20210418
+- Adds caching for editor decorations, should improve performance when switching between multiple files
+
 ## `0.2.0` - 20210408
 - Updates the status bar item to show more details
 - Fixes bugs in `updateCache` logic
