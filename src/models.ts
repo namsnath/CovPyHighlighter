@@ -1,3 +1,5 @@
+import { Range } from 'vscode';
+
 /* eslint-disable @typescript-eslint/naming-convention */
 export interface ICoverageStatsJson {
     executed_lines: number[];
@@ -20,6 +22,16 @@ export interface ICoverageStatsJson {
 
 export interface ICoverageCache {
     [key: string]: CoverageStats;
+}
+
+export interface IFileDecorationRange {
+    excludedRanges: Range[];
+    executedRanges: Range[];
+    missingRanges: Range[];
+}
+
+export interface IFileDecorationCache {
+    [key: string]: IFileDecorationRange;
 }
 
 export class CoverageStats {
