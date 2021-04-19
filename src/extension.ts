@@ -1,6 +1,5 @@
 import { readFile } from 'fs';
 import { promisify } from 'util';
-import { platform } from 'os';
 import {
     FileSystemWatcher,
     TextEditor,
@@ -19,17 +18,17 @@ import ConfigProvider from './config/ConfigProvider';
 import Logger from './util/Logger';
 import Configs from './config/Configs';
 import CoverageStatusBarItem from './statusBar/CoverageStatusBarItem';
+import CoverageCache from './coverage/CoverageCache';
 
 // Promisified Functions
 const readFileAsync = promisify(readFile);
 
 const config = ConfigProvider.getInstance();
 const statusBarItem = CoverageStatusBarItem.getInstance();
-const isWindows = platform() === 'win32';
 
 // Caches/Dynamic
+let coverageCache: CoverageCache;
 let fileWatchers: FileSystemWatcher[] = [];
-let COV_CACHE: ICoverageCache = {};
 let FILE_CACHE: IFileDecorationCache = {};
 
 // Functions
@@ -100,13 +99,14 @@ function processJsonCoverage(json: any) {
     return covData;
 }
 
+// TODO: Move to CoverageProvider
 async function updateCache(files: Uri[]) {
     Logger.log('[Updating][CoverageCache]');
 
     const data = await getCoverageFileData(files);
     if (data && Object.keys(data).length > 0) {
         FILE_CACHE = {};
-        COV_CACHE = processJsonCoverage(data);
+        coverageCache.setCoverageCache(processJsonCoverage(data));
         return;
     }
 
@@ -121,14 +121,10 @@ function updateDecorations(editor: TextEditor, coverage: IFileDecorationRange) {
 
 function updateFileHighlight(editor: TextEditor) {
     statusBarItem.update({ loading: true });
-
     const fullPath = editor.document.uri.fsPath;
-    const fullPathLower = fullPath.toLowerCase();
-    const { path } = editor.document.uri;
-    const pathLower = path.toLowerCase();
 
     if (fullPath in FILE_CACHE) {
-        Logger.log(`[Updating][FileHighlight][FoundInCache] ${fullPath}`);
+        Logger.log(`[Updating][FileHighlight][FoundInFileCache] ${fullPath}`);
         updateDecorations(editor, FILE_CACHE[fullPath]);
         return;
     }
@@ -139,33 +135,7 @@ function updateFileHighlight(editor: TextEditor) {
         missingRanges: [],
     };
 
-    const matchingFile = Object.keys(COV_CACHE).find((file) => {
-        // If current file matches the path
-        if (file === path || file === fullPath) {
-            return true;
-        }
-
-        // If file is a substring of the path
-        // For cases when coverage.json does not have full paths
-        if (path.includes(file) || fullPath.includes(file)) {
-            return true;
-        }
-
-        if (isWindows) {
-            // Process file names to remove ambiguity
-            const fileLow = file.toLowerCase();
-            if (pathLower.includes(fileLow) || fullPathLower.includes(fileLow)) {
-                return true;
-            }
-        }
-
-        return false;
-    });
-
-    let covStats;
-    if (matchingFile) {
-        covStats = COV_CACHE[matchingFile];
-    }
+    const covStats = coverageCache.getCoverage(editor.document.uri);
 
     if (covStats) {
         Logger.log(`[Updating][FileHighlight] ${fullPath}`);
@@ -183,6 +153,7 @@ function updateFileHighlight(editor: TextEditor) {
         FILE_CACHE[fullPath] = decorations;
         statusBarItem.update({ loading: false, stats: covStats });
     } else {
+        Logger.log(`[Updating][FileHighlight][NotFound] ${fullPath}`);
         statusBarItem.update({ loading: false });
     }
 }
@@ -216,6 +187,7 @@ async function setupCacheAndWatchers() {
 // context: vscode.ExtensionContext
 export async function activate() {
     Logger.log(`[Activating] ${Configs.extensionName}`);
+    coverageCache = new CoverageCache();
 
     // Ensure that the cache is updated atleast once
     await setupCacheAndWatchers();
