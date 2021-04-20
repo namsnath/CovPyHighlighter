@@ -3,7 +3,7 @@ import {
     StatusBarAlignment,
     StatusBarItem,
 } from 'vscode';
-import { CoverageStats } from '../models';
+import { ICoverageStatsSummary } from '../models';
 import Logger from '../util/Logger';
 
 export default class CoverageStatusBarItem {
@@ -29,8 +29,8 @@ export default class CoverageStatusBarItem {
     }
 
     public update(
-        { loading = true, stats }:
-        { loading?: boolean, stats?: CoverageStats },
+        { loading = true, summary }:
+        { loading?: boolean, summary?: ICoverageStatsSummary },
     ) {
         const staticIcon = '$(globe)';
         const spinningIcon = '$(globe~spin)';
@@ -48,13 +48,13 @@ export default class CoverageStatusBarItem {
             return;
         }
 
-        if (stats) {
-            const percent = stats.summary.percentCovered.toFixed(2);
+        if (summary) {
+            const percent = summary.percentCovered.toFixed(2);
             const {
                 coveredLines, missingLines, excludedLines,
                 numBranches, coveredBranches, missingBranches,
                 numPartialBranches: partialBranches,
-            } = stats.summary;
+            } = summary;
 
             const textItems = [
                 `${staticIcon} ${percent}%`,

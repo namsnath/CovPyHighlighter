@@ -34,24 +34,35 @@ export interface IFileDecorationCache {
     [key: string]: IFileDecorationRange;
 }
 
+export interface IFileCacheData {
+    decorationRanges: IFileDecorationRange;
+    statSummary: ICoverageStatsSummary;
+}
+
+export interface IFileCache {
+    [key: string]: IFileCacheData;
+}
+
+export interface ICoverageStatsSummary {
+    coveredLines: number;
+    excludedLines: number;
+    missingLines: number;
+    numStatements: number;
+    percentCovered: number;
+    // If branch is enabled
+    numBranches: number;
+    numPartialBranches: number;
+    coveredBranches: number;
+    missingBranches: number;
+}
+
 export class CoverageStats {
     public path: string;
     public replacedPath: string;
     public excludedLines: number[];
     public executedLines: number[];
     public missingLines: number[];
-    public summary: {
-        coveredLines: number;
-        excludedLines: number;
-        missingLines: number;
-        numStatements: number;
-        percentCovered: number;
-        // If branch is enabled
-        numBranches: number;
-        numPartialBranches: number;
-        coveredBranches: number;
-        missingBranches: number;
-    };
+    public summary: ICoverageStatsSummary;
 
     constructor(
         path: string,
