@@ -1,5 +1,12 @@
 # Change Log
 
+## `0.3.2` - 20230213
+- Fix a small bug where status bar would not update for files where coverage is cached
+
+## `0.3.1` - 20230212
+- Adds CD to deploy extension
+- Updates packages to address vulnerabilities
+
 ## `0.3.0` - 20210418
 - Adds caching for editor decorations, should improve performance when switching between multiple files
 
