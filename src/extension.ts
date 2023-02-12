@@ -85,6 +85,7 @@ function processJsonCoverage(json: any) {
             const stats = new CoverageStats(file, data);
 
             covData[stats.replacedPath] = stats;
+            covData[stats.replacedPath.toLowerCase()] = stats;
 
             if (config.replacePath) {
                 const replacedStats = new CoverageStats(
@@ -93,6 +94,7 @@ function processJsonCoverage(json: any) {
                     config.replacePathWith,
                 );
                 covData[replacedStats.replacedPath] = replacedStats;
+                covData[replacedStats.replacedPath.toLowerCase()] = replacedStats;
             }
         });
     }
@@ -129,7 +131,11 @@ function updateFileHighlight(editor: TextEditor) {
 
     if (fullPath in FILE_CACHE) {
         Logger.log(`[Updating][FileHighlight][FoundInCache] ${fullPath}`);
-        updateDecorations(editor, FILE_CACHE[fullPath]);
+        const cachedDecorations = FILE_CACHE[fullPath];
+        const cachedCoverage = COV_CACHE[fullPath];
+
+        updateDecorations(editor, cachedDecorations);
+        statusBarItem.update({ loading: false, stats: cachedCoverage });
         return;
     }
 
